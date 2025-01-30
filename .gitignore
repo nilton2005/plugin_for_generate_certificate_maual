@@ -1,0 +1,4 @@
+/lib/
+/vendor/
+*.log
+credentials.json
