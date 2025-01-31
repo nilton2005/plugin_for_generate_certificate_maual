@@ -448,7 +448,7 @@ class ManualCertificateImgGenerator{
     private $qrGenerator;
     private $dataFilteredoForSyllabus;
 
-    public function __construct( $config, ManualCertificateQrGenerator $qrGenerator, $dataFilteredoForSyllabus){
+    public function __construct( $config, $qrGenerator, $dataFilteredoForSyllabus){
         $this->config = $config;
         $this->qrGenerator = $qrGenerator;
         $this->dataFilteredoForSyllabus = $dataFilteredoForSyllabus;
@@ -481,6 +481,34 @@ class ManualCertificateImgGenerator{
             'riesgo-electrico' => 'syllabus_riesgo_electrico'
         ];
         return $syllabus[$course];
+    }
+    private function filter_curse_of_sullabus($curse){
+        $curser = [
+            'syllabus_prime_auxi' => 'Primeros Auxilios',
+            'syllabus_trab_altura' => 'Trabajo en Altura',
+            'syllabus_espacios_confi' => 'Espacios Confinados',
+            'syllabus_riesgo_electrico' => 'Riesgo Electrico'
+        ];
+        return $curser[$curse];
+    }
+    private function filter_program_formation($real_type_formation){
+        $program_formation = [
+            'c-t-practico' => 'Capacitación Teorico Práctico',
+            'c-t-taller-practico' => 'Capacitación teórico con Taller Practico',
+            'cu-ta-pra' => 'Curso con Taller Practico',
+            'c-t-con-taller-prac' => 'Curso Teórico con Taller Practico'
+        ];
+        return $program_formation[$real_type_formation];
+    }
+
+    private function add_one_year_to_actual_date_emision($date){
+        $date_object = DateTime::createFromFormat('Y-m-d', $date);
+        if(!$date_object){
+            return "formato de fecha invalida";
+        }
+
+        $date_object->modify('+1 year');
+        return $date_object->format('d/m/Y');
     }
     private function loadTemplate($syllabus){
         $template_paths = $this->config['template_path'];
@@ -535,15 +563,17 @@ class ManualCertificateImgGenerator{
 
     private function renderFirstTemplateText($image, $data, $colors, $code) {
         $fonts = $this->config['fonts'];
+        $real_type_formation = $this->filter_program_formation($data['type_formation']);
+        $real_cuser_to_syllabus = $this->filter_curse_of_sullabus($data['curso']);
         $text_configs = [
-            ['text' => $data->nombre, 'x' => 350, 'y' => 325, 'size' => 30, 'font' => $fonts['nunito'], 'color' => $colors['name']],
-            ['text' => $data->dni, 'x' => 675, 'y' => 382, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['dni']],
-            ['text' => $data->curso, 'x' => 430, 'y' => 438, 'size' => 25, 'font' => $fonts['dm_serif'], 'color' => $colors['course']],
-            ['text' => $data->mode, 'x' => 300, 'y' => 400, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['details']],
-            ['text' => $data->hours, 'x' => 300, 'y' => 470, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['details']],
-            ['text' => $data->type, 'x' => 300, 'y' => 440, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['details']],
-            ['text' => $data->address, 'x' => 300, 'y' => 410, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['details']],
-            ['text' => date('d/m/Y', strtotime($data->ultima_fecha)), 'x' => 750, 'y' => 565, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['date']],
+            ['text' => $data['nombre'], 'x' => 270, 'y' => 200, 'size' => 30, 'font' => $fonts['nunito'], 'color' => $colors['name']],
+            ['text' => $data['dni'], 'x' => 275, 'y' => 582, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['dni']],
+            ['text' => $real_cuser_to_syllabus, 'x' => 230, 'y' => 200, 'size' => 25, 'font' => $fonts['dm_serif'], 'color' => $colors['course']],
+            ['text' => $real_type_formation, 'x' => 230, 'y' => 230, 'size' => 14, 'font'=> $fonts['arimo'], 'color' => $colors['details']],
+            ['text' => $data['mode'], 'x' => 200, 'y' => 500, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['details']],
+            ['text' => $data['hours'], 'x' => 200, 'y' => 570, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['details']],
+            ['text' => $data['address'], 'x' => 200, 'y' => 510, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['details']],
+            ['text' => date('d/m/Y', strtotime($data['fecha_emision'])), 'x' => 250, 'y' => 565, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['date']],
             ['text' => $code, 'x' => 275, 'y' => 565, 'size' => 14, 'font' => $fonts['dm_serif'], 'color' => $colors['code']]
         ];
 
@@ -562,12 +592,18 @@ class ManualCertificateImgGenerator{
     }
 
     private function renderSecondTemplateText($image, $data, $colors) {
+        $real_date_plus_one_year = $this->add_one_year_to_actual_date_emision($data['fecha_emision']);
+        $real_curse = $this->filter_curse_of_sullabus( $data['curso']);
         $fonts = $this->config['fonts'];
         $text_configs = [
-            ['text' => $data->curso, 'x' => 360, 'y' => 100, 'size' => 39, 'font' => $fonts['dm_serif'], 'color' => $colors['course2']],
-            ['text' => $data->type_couser, 'x' => 360, 'y' => 150, 'size' => 24, 'font' => $fonts['dm_serif'], 'color' => $colors['course2']],
+            ['text' => $real_curse, 'x' => 200, 'y' => 100, 'size' => 39, 'font' => $fonts['dm_serif'], 'color' => $colors['course2']],
+            ['text' => $data['type_couser'], 'x' => 360, 'y' => 150, 'size' => 24, 'font' => $fonts['dm_serif'], 'color' => $colors['course2']],
             ['text' => 'Aprobado', 'x' => 220, 'y' => 200, 'size' => 36, 'font' => $fonts['dm_serif'], 'color' => $colors['course2']],
-            ['text' => number_format($data->nota, 1), 'x' => 720, 'y' => 200, 'size' => 36, 'font' => $fonts['nunito'], 'color' => $colors['course2']]
+            ['text'  => number_format($data['nota'], 1), 'x' => 720, 'y' => 200, 'size' => 36, 'font' => $fonts['nunito'], 'color' => $colors['course2']],
+            ['text' => $data['nombre'], 'x' => 270, 'y' => 150, 'size' => 30, 'font' => $fonts['nunito'], 'color' => $colors['name']],
+            ['text' => $data['dni'], 'x' => 275, 'y' => 232, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['dni']],
+            ['text' => $real_date_plus_one_year, 'x' => 275, 'y' => 300, 'size' => 14, 'font' => $fonts['arimo'], 'color' => $colors['dni']],
+
         ];
 
         foreach ($text_configs as $config) {
